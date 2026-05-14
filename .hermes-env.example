@@ -1,0 +1,12 @@
+# 复制到 ~/.hermes/.env 并填入真实值
+# cp .hermes-env.example ~/.hermes/.env
+
+# ── 必填 ──────────────────────────────────────────────────────
+GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx     # repo 权限
+GITHUB_REPO=your-org/your-repo            # 例: octocat/hello-world
+ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxx     # generate-refactor-pr 使用
+
+# ── 可选 ──────────────────────────────────────────────────────
+REFACTOR_BASE_BRANCH=main                 # PR 基于哪个分支
+MAX_DEBTS_PER_RUN=5                       # 每次最多处理几个技术债
+DEBT_REPORT_PATH=/tmp/debt_report.json   # 报告输出路径

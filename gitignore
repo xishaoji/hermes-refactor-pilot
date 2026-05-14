@@ -1,0 +1,17 @@
+# 环境变量（绝对不要提交）
+.env
+*.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# 运行时产物
+/tmp/debt_report.json
+/tmp/test_result.json
+
+# IDE
+.vscode/
+.idea/
