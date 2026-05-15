@@ -21,11 +21,11 @@ if ! command -v hermes &>/dev/null; then
 fi
 echo "✅ Hermes 已安装：$(hermes --version 2>/dev/null || echo '版本未知')"
 
-# ── 2. 安装 Python 依赖 ─────────────────────────────────────
-echo ""
-echo "📦 安装 Python 依赖（PyGithub radon python-dotenv pytest pytest-json-report）..."
-pip install --quiet PyGithub radon python-dotenv pytest pytest-json-report
-echo "✅ 依赖安装完成"
+# # ── 2. 安装 Python 依赖 ─────────────────────────────────────
+# echo ""
+# echo "📦 安装 Python 依赖（PyGithub radon python-dotenv pytest pytest-json-report）..."
+# pip install --quiet PyGithub radon python-dotenv pytest pytest-json-report
+# echo "✅ 依赖安装完成"
 
 # ── 3. 安装 Skills ──────────────────────────────────────────
 echo ""
