@@ -4,8 +4,7 @@ Refactor PR Generator — called by Hermes /generate-refactor-pr skill
 Install: pip install PyGithub python-dotenv
 Place at: ~/.hermes/skills/devops/generate-refactor-pr/scripts/generate_refactor_pr.py
 
-注意：LLM 调用通过 Hermes 内置 `hermes llm` 命令完成，
-      不需要单独的 ANTHROPIC_API_KEY。
+注意：LLM 调用通过 Hermes 内置 `hermes llm` 命令完成，不需要单独的 ANTHROPIC_API_KEY。
 """
 
 import json
