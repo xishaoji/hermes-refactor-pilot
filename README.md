@@ -57,31 +57,24 @@ git clone https://github.com/your-username/hermes-refactor-pilot.git
 cd hermes-refactor-pilot
 ```
 
-### 3. 配置环境变量
+### 3. 一键安装（推荐）
 
 ```bash
-cp .hermes-env.example ~/.hermes/.env
+bash install.sh
 ```
 
-编辑 `~/.hermes/.env`，填入以下三个值：
+脚本会自动完成：Skills 复制、Python 依赖安装、环境变量安全合并（**不会覆盖已有的 `~/.hermes/.env`**，只追加缺失的变量）。
+
+### 4. 填入环境变量
+
+安装后编辑 `~/.hermes/.env`，填入以下值：
 
 | 变量 | 说明 | 获取方式 |
 |------|------|----------|
 | `GITHUB_TOKEN` | GitHub 个人访问令牌（需要 `repo` 权限） | [GitHub Settings → Tokens](https://github.com/settings/tokens) |
 | `GITHUB_REPO` | 目标仓库，格式 `owner/repo` | 例：`octocat/hello-world` |
-| `ANTHROPIC_API_KEY` | Anthropic API Key | [console.anthropic.com](https://console.anthropic.com) |
 
-### 4. 安装 Skills
-
-```bash
-cp -r skills/devops/* ~/.hermes/skills/devops/
-```
-
-### 5. 安装 Python 依赖
-
-```bash
-pip install PyGithub radon anthropic python-dotenv pytest pytest-json-report
-```
+> **无需 `ANTHROPIC_API_KEY`** — LLM 调用通过 Hermes 内置命令完成，直接使用 Hermes 已配置的模型。
 
 ---
 

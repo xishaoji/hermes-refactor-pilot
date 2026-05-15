@@ -1,26 +1,29 @@
 #!/usr/bin/env python3
 """
 Refactor PR Generator — called by Hermes /generate-refactor-pr skill
-Install: pip install PyGithub anthropic python-dotenv
-Place at: ~/.hermes/scripts/generate_refactor_pr.py
+Install: pip install PyGithub python-dotenv
+Place at: ~/.hermes/skills/devops/generate-refactor-pr/scripts/generate_refactor_pr.py
+
+注意：LLM 调用通过 Hermes 内置 `hermes llm` 命令完成，
+      不需要单独的 ANTHROPIC_API_KEY。
 """
 
 import json
 import os
+import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 
-import anthropic
 from dotenv import load_dotenv
 from github import Github
 
 load_dotenv(Path.home() / ".hermes" / ".env")
 
-GITHUB_TOKEN  = os.environ["GITHUB_TOKEN"]
-GITHUB_REPO   = os.environ["GITHUB_REPO"]
-ANTHROPIC_KEY = os.environ["ANTHROPIC_API_KEY"]
-BASE_BRANCH   = os.environ.get("REFACTOR_BASE_BRANCH", "main")
-REPORT_PATH   = Path(os.environ.get("DEBT_REPORT_PATH", "/tmp/debt_report.json"))
+GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
+GITHUB_REPO  = os.environ["GITHUB_REPO"]
+BASE_BRANCH  = os.environ.get("REFACTOR_BASE_BRANCH", "main")
+REPORT_PATH  = Path(os.environ.get("DEBT_REPORT_PATH", "/tmp/debt_report.json"))
 
 REFACTOR_PROMPT = """You are an expert Python engineer. Refactor the following function to fix this issue:
 
@@ -42,34 +45,43 @@ Rules:
 - If splitting a long function, return all new helper functions too
 """
 
+# ── LLM 调用（通过 Hermes 内置命令，不需要 API key）────────────────────────────
+
+def call_llm(prompt: str) -> str:
+    """
+    通过 Hermes 内置的 `hermes llm` 命令调用模型。
+    Hermes 使用自身已配置的模型，无需额外 API key。
+    """
+    result = subprocess.run(
+        ["hermes", "llm", "--prompt", prompt],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"hermes llm 调用失败: {result.stderr.strip()}")
+    return result.stdout.strip()
+
+# ── 工具函数 ──────────────────────────────────────────────────────────────────
+
 def get_code_context(content: str, line_start: int, line_end: int, context: int = 20) -> str:
     lines = content.splitlines()
     start = max(0, line_start - context - 1)
     end   = min(len(lines), line_end + context)
     snippet = lines[start:end]
-    # Mark the target function
     rel_start = line_start - start - 1
     rel_end   = line_end   - start
     snippet.insert(rel_end,   "# ── END TARGET ──")
     snippet.insert(rel_start, "# ── BEGIN TARGET ──")
     return "\n".join(snippet)
 
-def call_claude(prompt: str) -> str:
-    client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
-    msg = client.messages.create(
-        model="claude-opus-4-20250514",
-        max_tokens=2048,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return msg.content[0].text.strip()
-
 def replace_function(original: str, refactored: str, line_start: int, line_end: int) -> str:
     lines = original.splitlines()
     return "\n".join(lines[:line_start - 1] + refactored.splitlines() + lines[line_end:])
 
 def create_pr(repo, debt: dict, new_content: str, file_path: str) -> str:
-    ts = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
-    branch = f"refactor/auto-{debt['debt_type'].replace('_','-')}-{ts}"
+    ts     = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    branch = f"refactor/auto-{debt['debt_type'].replace('_', '-')}-{ts}"
 
     base_sha = repo.get_branch(BASE_BRANCH).commit.sha
     repo.create_git_ref(ref=f"refs/heads/{branch}", sha=base_sha)
@@ -104,13 +116,14 @@ def create_pr(repo, debt: dict, new_content: str, file_path: str) -> str:
     return pr.html_url
 
 # ── main ──────────────────────────────────────────────────────────────────────
+
 if not REPORT_PATH.exists():
-    print(f"[pr-gen] ERROR: {REPORT_PATH} not found. Run /scan-tech-debt first.")
-    raise SystemExit(1)
+    print(f"[pr-gen] ERROR: {REPORT_PATH} 不存在，请先运行 /scan-tech-debt")
+    sys.exit(1)
 
 report = json.loads(REPORT_PATH.read_text())
 debts  = report["debts"]
-print(f"[pr-gen] Processing {len(debts)} debts from report ...")
+print(f"[pr-gen] 处理 {len(debts)} 个技术债 ...")
 
 g    = Github(GITHUB_TOKEN)
 repo = g.get_repo(GITHUB_REPO)
@@ -119,20 +132,25 @@ results = []
 for i, debt in enumerate(debts, 1):
     print(f"[pr-gen] ({i}/{len(debts)}) {debt['function_name']} in {debt['file_path']} ...")
     try:
-        file_content = repo.get_contents(debt["file_path"], ref=BASE_BRANCH).decoded_content.decode("utf-8")
-        context = get_code_context(file_content, debt["line_start"], debt["line_end"])
-        prompt  = REFACTOR_PROMPT.format(context=context, **{k: debt[k] for k in ("detail","file_path","function_name")})
-        refactored_code = call_claude(prompt)
-        new_content = replace_function(file_content, refactored_code, debt["line_start"], debt["line_end"])
-        pr_url = create_pr(repo, debt, new_content, debt["file_path"])
-        print(f"[pr-gen]   ✅ PR created: {pr_url}")
+        file_content    = repo.get_contents(debt["file_path"], ref=BASE_BRANCH).decoded_content.decode("utf-8")
+        context         = get_code_context(file_content, debt["line_start"], debt["line_end"])
+        prompt          = REFACTOR_PROMPT.format(
+            code_context=context,
+            detail=debt["detail"],
+            file_path=debt["file_path"],
+            function_name=debt["function_name"],
+        )
+        refactored_code = call_llm(prompt)
+        new_content     = replace_function(file_content, refactored_code, debt["line_start"], debt["line_end"])
+        pr_url          = create_pr(repo, debt, new_content, debt["file_path"])
+        print(f"[pr-gen]   ✅ PR 已创建: {pr_url}")
         results.append({"debt": debt["function_name"], "pr_url": pr_url, "status": "ok"})
     except Exception as e:
-        print(f"[pr-gen]   ❌ Failed: {e}")
+        print(f"[pr-gen]   ❌ 失败: {e}")
         results.append({"debt": debt["function_name"], "error": str(e), "status": "failed"})
 
-print("\n[pr-gen] Summary:")
+print("\n[pr-gen] 汇总:")
 for r in results:
-    status = "✅" if r["status"] == "ok" else "❌"
+    icon   = "✅" if r["status"] == "ok" else "❌"
     detail = r.get("pr_url") or r.get("error")
-    print(f"  {status} {r['debt']}: {detail}")
+    print(f"  {icon} {r['debt']}: {detail}")

@@ -1,12 +1,19 @@
-# 复制到 ~/.hermes/.env 并填入真实值
-# cp .hermes-env.example ~/.hermes/.env
+# hermes-refactor-pilot 环境变量模板
+#
+# ⚠️  不要直接 cp 覆盖已有的 ~/.hermes/.env
+#     请使用项目自带的 install.sh 安全合并变量
+#
+# 手动添加时，把需要的行追加到 ~/.hermes/.env 末尾即可
 
 # ── 必填 ──────────────────────────────────────────────────────
-GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx     # repo 权限
-GITHUB_REPO=your-org/your-repo            # 例: octocat/hello-world
-ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxx     # generate-refactor-pr 使用
+GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx     # repo 权限，用于读写仓库和创建 PR
+GITHUB_REPO=your-org/your-repo            # 目标仓库，格式: owner/repo
 
-# ── 可选 ──────────────────────────────────────────────────────
-REFACTOR_BASE_BRANCH=main                 # PR 基于哪个分支
-MAX_DEBTS_PER_RUN=5                       # 每次最多处理几个技术债
-DEBT_REPORT_PATH=/tmp/debt_report.json   # 报告输出路径
+# ── 可选（有默认值）──────────────────────────────────────────
+REFACTOR_BASE_BRANCH=main                 # PR 基于哪个分支，默认 main
+MAX_DEBTS_PER_RUN=5                       # 每次最多处理几个技术债，默认 5
+DEBT_REPORT_PATH=/tmp/debt_report.json   # 扫描报告路径，默认 /tmp/debt_report.json
+
+# ── 不再需要 ─────────────────────────────────────────────────
+# ANTHROPIC_API_KEY 已移除：LLM 调用通过 Hermes 内置命令完成，
+# 使用 Hermes 自身已配置的模型，无需额外 API key。
